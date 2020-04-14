@@ -617,15 +617,33 @@ module Minitest
   class ProgressReporter < Reporter
     def prerecord klass, name #:nodoc:
       if options[:verbose] then
-        io.print "%s#%s = " % [klass.name, name]
-        io.flush
+        @current ||= nil
+        @current = [klass.name, name].tap(&method(:verbose_start))
       end
     end
 
     def record result # :nodoc:
-      io.print "%.2f s = " % [result.time] if options[:verbose]
+      if options[:verbose] then
+        verbose_start [result.klass, result.name]
+        @current = nil
+        io.print "%.2f s = " % [result.time]
+      end
+
       io.print result.result_code
       io.puts if options[:verbose]
+    end
+
+    private
+
+    def verbose_start(test)
+      unless @current == test
+        # Mark the current test as 'pending' with ellipsis
+        # if multiple tests are being executed in parallel.
+        io.puts '…' if @current
+
+        io.print "%s#%s = " % test
+        io.flush
+      end
     end
   end
 
